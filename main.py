@@ -113,7 +113,7 @@ def create_autostopping_schedule(
     return resp.json()
 
 
-def get_autostopping_rules() -> dict:
+def get_autostopping_rules(limit: int = 5) -> dict:
     """
     Get existing rules
     """
@@ -122,7 +122,7 @@ def get_autostopping_rules() -> dict:
         f"https://app.harness.io/gateway/lw/api/accounts/{getenv('HARNESS_ACCOUNT_ID')}/autostopping/rules/list",
         headers=HEADERS,
         params=PARAMS,
-        json={"page": 1, "limit": 5},
+        json={"page": 1, "limit": limit},
     )
 
     try:
@@ -143,7 +143,7 @@ def get_autostopping_rules() -> dict:
             f"https://app.harness.io/gateway/lw/api/accounts/{getenv('HARNESS_ACCOUNT_ID')}/autostopping/rules/list",
             headers=HEADERS,
             params=PARAMS,
-            json={"page": page, "limit": 5},
+            json={"page": page, "limit": limit},
         )
 
         try:
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     # get existing ec2 rules
     instances = [
         x
-        for x in get_autostopping_rules()["response"]["records"]
+        for x in get_autostopping_rules(10)["response"]["records"]
         if "instance" in x["routing"]
     ]
 
