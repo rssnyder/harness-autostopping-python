@@ -1,0 +1,37 @@
+RULE = {
+    "service": {
+        "name": "NAME",
+        "account_identifier": "wlgELJ0TTre5aZhzpt8gVA",
+        "fulfilment": "ondemand",
+        "kind": "instance",
+        "cloud_account_id": "rileyharnessccm",
+        "idle_time_mins": 15,
+        "custom_domains": [],
+        "health_check": {
+            "protocol": "http",
+            "path": "/",
+            "port": 80,
+            "timeout": 30,
+            "status_code_from": 200,
+            "status_code_to": 299,
+        },
+        "routing": {
+            "ports": [],
+            "instance": {"filter": {"ids": ["i-02388d6e6d0f204f9"]}},
+        },
+        "opts": {
+            "preservePrivateIP": false,
+            "deleteCloudResources": false,
+            "alwaysUsePrivateIP": false,
+            "hide_progress_page": false,
+            "preserve_private_ip": false,
+            "always_use_private_ip": false,
+        },
+        "metadata": {"cloud_provider_details": {"name": "riley-harness-ccm"}},
+        "disabled": false,
+        "match_all_subdomains": false,
+        "access_point_id": "",
+    },
+    "deps": [],
+    "apply_now": False,
+}

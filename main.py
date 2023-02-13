@@ -1,0 +1,136 @@
+from logging import error
+from os import getenv
+
+from requests import get, post, exceptions
+
+
+HEADERS = {
+    "accept": "*/*",
+    "content-type": "application/json",
+    "x-api-key": getenv("HARNESS_PLATFORM_API_KEY"),
+}
+
+PARAMS = {
+    "routingId": getenv("HARNESS_ACCOUNT_ID"),
+    "accountIdentifier": getenv("HARNESS_ACCOUNT_ID"),
+}
+
+
+def create_autostopping_rule(
+    name: str,
+    instance_id: str,
+    instance_type: str,
+    cloud_account_id: str,
+    idle_time: int,
+) -> dict:
+    """
+    Creates a simple autostopping rule
+    """
+
+    resp = post(
+        f"https://app.harness.io/gateway/lw/api/accounts/{getenv('HARNESS_ACCOUNT_ID')}/autostopping/v2/rules",
+        headers=HEADERS,
+        params=PARAMS,
+        json={
+            "service": {
+                "name": name,
+                "account_identifier": getenv("HARNESS_PLATFORM_API_KEY"),
+                "fulfilment": instance_type,
+                "kind": "instance",
+                "cloud_account_id": cloud_account_id,
+                "idle_time_mins": idle_time,
+                "routing": {
+                    "ports": [],
+                    "instance": {"filter": {"ids": [instance_id]}},
+                },
+                "metadata": {"cloud_provider_details": {"name": cloud_account_id}},
+            }
+        },
+    )
+
+    try:
+        resp.raise_for_status()
+    except Exception as e:
+        try:
+            data = resp.json()
+        except exceptions.JSONDecodeError as f:
+            raise e
+        else:
+            error(data.get("errors", data))
+            return {}
+
+    return resp.json()
+
+
+def create_autostopping_schedule(
+    cloud_account_id: str,
+    rule_id: str,
+    days: list,
+    start_hour: int,
+    end_hour: int,
+    timezone: str = "America/Chicago",
+) -> dict:
+    """
+    Creates a simple autostopping schedule for an existing rule
+    """
+
+    resp = post(
+        f"https://app.harness.io/gateway/lw/api/accounts/{getenv('HARNESS_ACCOUNT_ID')}/schedules",
+        headers=HEADERS,
+        params=PARAMS.update({"cloud_account_id": cloud_account_id}),
+        json={
+            "schedule": {
+                "name": f"{rule_id}-schedule",
+                "account_id": getenv("HARNESS_ACCOUNT_ID"),
+                "description": "",
+                "resources": [{"ID": str(rule_id), "Type": "autostop_rule"}],
+                "details": {
+                    "timezone": timezone,
+                    "uptime": {
+                        "days": {
+                            "days": days,
+                            "all_day": False,
+                            "start_time": {"hour": start_hour, "min": 0},
+                            "end_time": {"hour": end_hour, "min": 0},
+                        }
+                    },
+                },
+            }
+        },
+    )
+
+    try:
+        resp.raise_for_status()
+    except Exception as e:
+        try:
+            data = resp.json()
+        except exceptions.JSONDecodeError as f:
+            raise e
+        else:
+            error(data.get("errors", data))
+            return ""
+
+    return resp.json()
+
+
+if __name__ == "__main__":
+    print("let's go")
+
+    rule = create_autostopping_rule(
+        "pythontest", "i-02388d6e6d0f204f9", "ondemand", "rileyharnessccm", 12
+    )
+
+    if rule == {}:
+        exit()
+
+    rule_id = rule.get("response", {}).get("id", "")
+
+    sched = create_autostopping_schedule(
+        "rileyharnessccm", rule_id, [1, 2, 3, 4, 5], 8, 17, "America/Chicago"
+    )
+
+    schedule_id = sched.get("response", {}).get("id")
+
+    print(
+        f"{rule_id} -> {schedule_id} -> https://app.harness.io/ng/#/account/{getenv('HARNESS_ACCOUNT_ID')}/ce/autostopping-rules/rule/{rule_id}"
+    )
