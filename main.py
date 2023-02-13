@@ -113,24 +113,93 @@ def create_autostopping_schedule(
     return resp.json()
 
 
+def get_autostopping_rules() -> dict:
+    """
+    Get existing rules
+    """
+
+    resp = post(
+        f"https://app.harness.io/gateway/lw/api/accounts/{getenv('HARNESS_ACCOUNT_ID')}/autostopping/rules/list",
+        headers=HEADERS,
+        params=PARAMS,
+        json={"page": 1, "limit": 5},
+    )
+
+    try:
+        resp.raise_for_status()
+    except Exception as e:
+        try:
+            data = resp.json()
+        except exceptions.JSONDecodeError as f:
+            raise e
+        else:
+            error(data.get("errors", data))
+            return {}
+
+    final_data = resp.json()
+
+    for page in range(2, final_data.get("response", {}).get("pages") + 1):
+        resp = post(
+            f"https://app.harness.io/gateway/lw/api/accounts/{getenv('HARNESS_ACCOUNT_ID')}/autostopping/rules/list",
+            headers=HEADERS,
+            params=PARAMS,
+            json={"page": page, "limit": 5},
+        )
+
+        try:
+            resp.raise_for_status()
+        except Exception as e:
+            try:
+                data = resp.json()
+            except exceptions.JSONDecodeError as f:
+                raise e
+            else:
+                error(data.get("errors", data))
+                return {}
+
+        data = resp.json()
+
+        final_data["response"]["records"] += data["response"]["records"]
+
+    return final_data
+
+
 if __name__ == "__main__":
     print("let's go")
 
-    rule = create_autostopping_rule(
-        "pythontest", "i-02388d6e6d0f204f9", "ondemand", "rileyharnessccm", 12
-    )
+    # target instance
+    instance = "i-02388d6e6d0f204f9"
 
-    if rule == {}:
-        exit()
+    # get existing ec2 rules
+    instances = [
+        x
+        for x in get_autostopping_rules()["response"]["records"]
+        if "instance" in x["routing"]
+    ]
 
-    rule_id = rule.get("response", {}).get("id", "")
+    # find exsting rules for target instance
+    matching = [
+        x["id"]
+        for x in instances
+        if x["routing"]["instance"]["filter"]["ids"].pop() == instance
+    ]
 
-    sched = create_autostopping_schedule(
-        "rileyharnessccm", rule_id, [1, 2, 3, 4, 5], 8, 17, "America/Chicago"
-    )
+    if not matching:
+        rule = create_autostopping_rule(
+            "pythontest", instance, "ondemand", "rileyharnessccm", 12
+        )
 
-    schedule_id = sched.get("response", {}).get("id")
+        if rule == {}:
+            exit()
 
-    print(
-        f"{rule_id} -> {schedule_id} -> https://app.harness.io/ng/#/account/{getenv('HARNESS_ACCOUNT_ID')}/ce/autostopping-rules/rule/{rule_id}"
-    )
+        rule_id = rule.get("response", {}).get("id", "")
+
+        sched = create_autostopping_schedule(
+            "rileyharnessccm", rule_id, [1, 2, 3, 4, 5], 8, 17, "America/Chicago"
+        )
+
+        schedule_id = sched.get("response", {}).get("id")
+
+        print(
+            f"{rule_id} -> {schedule_id} -> https://app.harness.io/ng/#/account/{getenv('HARNESS_ACCOUNT_ID')}/ce/autostopping-rules/rule/{rule_id}"
+        )
