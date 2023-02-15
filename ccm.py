@@ -1,6 +1,6 @@
 from logging import error
 from os import getenv
-from json import dumps
+from json import dumps, loads
 
 from requests import get, post, exceptions
 
@@ -260,8 +260,35 @@ def get_autostopping_rules(limit: int = 5) -> dict:
     return final_data["response"]["records"]
 
 
-if __name__ == "__main__":
-    print([x for x in get_autostopping_rules(10) if x["fulfilment"] == "kubernetes"])
+def existing_k8s_rule(
+    workload: str, namespace: str, cloud_account_id: str, k8s_connector_id: str
+):
+    """
+    See if a rule exists for a given workload in a cluster
+    """
 
-    # rule = create_k8s_autostopping_rule("python", "baby-app", "baby", "rileyharnessccm", "codeserverCostaccess")
-    # print(create_autostopping_schedule("rileyharnessccm", rule["response"]["id"], [1,2,3,4,5], 8, 17))
+    for rule in [
+        x for x in get_autostopping_rules(10) if x["fulfilment"] == "kubernetes"
+    ]:
+        rule_data = loads(rule["routing"]["k8s"]["RuleJson"])
+        if (
+            (rule_data["metadata"]["namespace"] == namespace)
+            and (rule_data["spec"]["workloadName"] == workload)
+            and (
+                rule_data["metadata"]["annotations"]["harness.io/cloud-connector-id"]
+                == cloud_account_id
+            )
+            and (rule["metadata"]["kubernetes_connector_id"] == k8s_connector_id)
+        ):
+            return rule["id"]
+
+    return 0
+
+
+if __name__ == "__main__":
+    if not existing_k8s_rule(
+        "baby-app", "baby", "rileyharnessccm", "codeserverCostaccess"
+    ):
+        print("Create")
+        # rule = create_k8s_autostopping_rule("python", "baby-app", "baby", "rileyharnessccm", "codeserverCostaccess")
+        # print(create_autostopping_schedule("rileyharnessccm", rule["response"]["id"], [1,2,3,4,5], 8, 17))
