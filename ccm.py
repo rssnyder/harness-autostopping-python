@@ -262,7 +262,7 @@ def get_autostopping_rules(limit: int = 5) -> dict:
 
 def existing_k8s_rule(
     workload: str, namespace: str, cloud_account_id: str, k8s_connector_id: str
-):
+) -> int:
     """
     See if a rule exists for a given workload in a cluster
     """
