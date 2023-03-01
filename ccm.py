@@ -285,10 +285,53 @@ def existing_k8s_rule(
     return 0
 
 
+def get_autostopping_schedule(rule_id: str) -> list:
+    """
+    Get existing schedule
+    """
+
+    resp = get(
+        f"https://app.harness.io/gateway/lw/api/accounts/{getenv('HARNESS_ACCOUNT_ID')}/schedules?res_id={rule_id}&res_type=autostop_rule",
+        headers=HEADERS,
+        params=PARAMS,
+    )
+
+    try:
+        resp.raise_for_status()
+    except Exception as e:
+        try:
+            data = resp.json()
+        except exceptions.JSONDecodeError as f:
+            raise e
+        else:
+            error(data.get("errors", data))
+            return {}
+
+    return resp.json()["response"]
+
+
 if __name__ == "__main__":
-    if not existing_k8s_rule(
-        "baby-app", "baby", "rileyharnessccm", "codeserverCostaccess"
-    ):
-        print("Create")
-        # rule = create_k8s_autostopping_rule("python", "baby-app", "baby", "rileyharnessccm", "codeserverCostaccess")
-        # print(create_autostopping_schedule("rileyharnessccm", rule["response"]["id"], [1,2,3,4,5], 8, 17))
+    cloudConnector = "rileyharnessccm"
+    cluster = "codeserver"
+    workload = "gbezmdjxlvrcvdnrjxdk"
+
+    rule_id = existing_k8s_rule(
+        f"{workload}-app", workload, cloudConnector, f"{cluster}Costaccess"
+    )
+
+    if not rule_id:
+        rule_id = create_k8s_autostopping_rule(
+            workload,
+            f"{workload}-app",
+            workload,
+            cloudConnector,
+            f"{cluster}Costaccess",
+        ).get("id", 0)
+    else:
+        print(f"rule already exists: {rule_id}")
+
+    if rule_id:
+        if not get_autostopping_schedule(rule_id):
+            print(create_autostopping_schedule(cloudConnector, rule_id, [0, 6], 8, 17))
+        else:
+            print("schedule already attached")
