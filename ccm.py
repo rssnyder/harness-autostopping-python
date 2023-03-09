@@ -76,6 +76,7 @@ def create_k8s_autostopping_rule(
     cloud_account_id: str,
     k8s_connector_id: str,
     idle_time: int = 5,
+    deps: list = [],
 ) -> dict:
     """
     Creates a simple autostopping rule
@@ -86,6 +87,9 @@ def create_k8s_autostopping_rule(
     cloud_account_id: harness cloud connector id
     k8s_connector_id: harness k8s connector id
     idle_time: min before shutdown after schedule expires
+    deps: rule dependencies
+        delay in seconds and rule id
+        [{ "delay_secs": 5, "dep_id": 12338 }]
     """
 
     resp = post(
@@ -131,7 +135,8 @@ def create_k8s_autostopping_rule(
                     "cloud_provider_details": {"name": cloud_account_id},
                     "kubernetes_connector_id": k8s_connector_id,
                 },
-            }
+            },
+            "deps": deps,
         },
     )
 
@@ -326,6 +331,7 @@ if __name__ == "__main__":
             workload,
             cloudConnector,
             f"{cluster}Costaccess",
+            deps=[{"delay_secs": 60, "dep_id": 12338}],
         ).get("id", 0)
     else:
         print(f"rule already exists: {rule_id}")
