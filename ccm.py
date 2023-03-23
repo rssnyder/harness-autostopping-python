@@ -151,15 +151,15 @@ def create_k8s_autostopping_rule(
             error(data.get("errors", data))
             return {}
 
-    return resp.json()
+    return resp.json()["response"]
 
 
 def create_autostopping_schedule(
     cloud_account_id: str,
     rule_id: str,
     days: list,
-    start_hour: int,
-    end_hour: int,
+    start: str,
+    end: str,
     timezone: str = "America/Chicago",
 ) -> dict:
     """
@@ -168,10 +168,15 @@ def create_autostopping_schedule(
     cloud_account_id: harness cloud connector id
     rule_id: id of the rule to apply the schedule to
     days: days of the week to apply the schedule, 0 = sunday 6 = satuday
-    start_hour: hour of the day to start the schedule, 24hr time
-    end_hour: hour of the day to stop the schedule, 24hr time
+    start: time to start the schedule, 24hr time, HH:MM
+    end: time to stop the schedule, 24hr time, HH:MM
     timezone: timezone to base the rule in
     """
+
+    start_h = int(start.split(":")[0])
+    start_m = int(start.split(":")[1])
+    end_h = int(end.split(":")[0])
+    end_m = int(end.split(":")[1])
 
     resp = post(
         f"https://app.harness.io/gateway/lw/api/accounts/{getenv('HARNESS_ACCOUNT_ID')}/schedules",
@@ -189,8 +194,8 @@ def create_autostopping_schedule(
                         "days": {
                             "days": days,
                             "all_day": False,
-                            "start_time": {"hour": start_hour, "min": 0},
-                            "end_time": {"hour": end_hour, "min": 0},
+                            "start_time": {"hour": start_h, "min": start_m},
+                            "end_time": {"hour": end_h, "min": end_m},
                         }
                     },
                 },
@@ -325,19 +330,27 @@ if __name__ == "__main__":
     )
 
     if not rule_id:
-        rule_id = create_k8s_autostopping_rule(
+        rule_resp = create_k8s_autostopping_rule(
             workload,
             f"{workload}-app",
             workload,
             cloudConnector,
             f"{cluster}Costaccess",
-            deps=[{"delay_secs": 60, "dep_id": 12338}],
-        ).get("id", 0)
+            # deps=[{"delay_secs": 60, "dep_id": 12338}],
+        )
+        print(rule_resp["routing"]["k8s"]["RuleJson"])
+        rule_id = rule_resp.get("id", 0)
+        print(f"rule {rule_id} createed")
     else:
         print(f"rule already exists: {rule_id}")
 
     if rule_id:
         if not get_autostopping_schedule(rule_id):
-            print(create_autostopping_schedule(cloudConnector, rule_id, [0, 6], 8, 17))
+            if create_autostopping_schedule(
+                cloudConnector, rule_id, [0, 6], "8:01", "17:05"
+            ).get("success", False):
+                print("schedule attached")
+            else:
+                print("schedule error")
         else:
             print("schedule already attached")
