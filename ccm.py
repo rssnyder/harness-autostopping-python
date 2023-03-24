@@ -131,6 +131,9 @@ def create_k8s_autostopping_rule(
                         "Namespace": namespace,
                     },
                 },
+                "opts":{
+                    "hide_progress_page": True,
+                },
                 "metadata": {
                     "cloud_provider_details": {"name": cloud_account_id},
                     "kubernetes_connector_id": k8s_connector_id,
@@ -139,6 +142,8 @@ def create_k8s_autostopping_rule(
             "deps": deps,
         },
     )
+
+    print(resp.request.body)
 
     try:
         resp.raise_for_status()
@@ -338,7 +343,7 @@ if __name__ == "__main__":
             f"{cluster}Costaccess",
             # deps=[{"delay_secs": 60, "dep_id": 12338}],
         )
-        print(rule_resp["routing"]["k8s"]["RuleJson"])
+        print(rule_resp)
         rule_id = rule_resp.get("id", 0)
         print(f"rule {rule_id} createed")
     else:
