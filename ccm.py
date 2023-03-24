@@ -143,8 +143,6 @@ def create_k8s_autostopping_rule(
         },
     )
 
-    print(resp.request.body)
-
     try:
         resp.raise_for_status()
     except Exception as e:
@@ -328,17 +326,18 @@ def get_autostopping_schedule(rule_id: str) -> list:
 if __name__ == "__main__":
     cloudConnector = "rileyharnessccm"
     cluster = "codeserver"
-    workload = "gbezmdjxlvrcvdnrjxdk"
+    workload = "gbezmdjxlvrcvdnrjxdk-app"
+    namespace = "gbezmdjxlvrcvdnrjxdk"
 
     rule_id = existing_k8s_rule(
-        f"{workload}-app", workload, cloudConnector, f"{cluster}Costaccess"
+        workload, namespace, cloudConnector, f"{cluster}Costaccess"
     )
 
     if not rule_id:
         rule_resp = create_k8s_autostopping_rule(
+            workload.split("-")[0],
             workload,
-            f"{workload}-app",
-            workload,
+            namespace,
             cloudConnector,
             f"{cluster}Costaccess",
             # deps=[{"delay_secs": 60, "dep_id": 12338}],
