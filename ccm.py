@@ -140,6 +140,7 @@ def create_k8s_autostopping_rule(
                 },
             },
             "deps": deps,
+            "apply_now": True
         },
     )
 
